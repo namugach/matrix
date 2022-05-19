@@ -93,12 +93,13 @@ const sCell = {
 			this.elem.style.display = "grid";
 			this.elem.style.alignContent = "center"
 			this.elem.style.backgroundColor = this.color;
+			this.elem.style.padding = "5px";
 		},
 		setEvnet(eHendler) {
 			eHendler = eHendler 
 			? eHendler 
-			: e => this.value = this.value === "" ? this.initProp.value : "";
-			this.elem.addEventListener("click", eHendler);
+			: e => this.value = this.value === "　" ? this.initProp.value : "　";
+			this.elem.addEventListener("mousedown", eHendler);
 		},
 		init(value, color, eHendler) {
 			const here = sCell.pri;
@@ -109,10 +110,12 @@ const sCell = {
 	}
 }
 class Cell {
-	constructor(value, color = "#e5bcda", className, eHendler) {
+	constructor(props = {}) {
+		const {value, className, color = "#e5bcda", handler} = props;
 		this.elem = document.createElement("div");
 		this.elem.className = className;
-		sCell.pri.init.call(this, value, color, eHendler);
+		this.elem.cell = this;
+		sCell.pri.init.call(this, value, color, handler);
 	}
 }
 const sRow = {
@@ -122,20 +125,24 @@ const sRow = {
 			this.elem.style.gridTemplateColumns = `repeat(${this.length}, 1fr)`;
 			this.elem.style.justifyItems = "stretch";
 			this.elem.style.textAlign = "center";
-			this.elem.style.backgroundColor = "#bbb";
+			this.elem.style.backgroundColor = "#222222";
 			this.elem.style.gridColumnGap = "10px";
-			this.elem.style.height = "35px"
+			// this.elem.style.height = "100%";
 		},
 		init() {
 			const here = sRow.pri;
 			here.setStyle.call(this);
-			this.forEach(cell => this.elem.appendChild(cell.elem));
+			this.forEach(cell => {
+				this.elem.appendChild(cell.elem);
+				this.data.push(cell.value);
+			});
 		}
 	}
 }
 class Row extends Array {
 	constructor() {
 		super();
+		this.data = [];
 		this.elem = document.createElement("div");
 		this.push(...arguments);
 		sRow.pri.init.call(this);
@@ -147,13 +154,33 @@ class Row extends Array {
 		this.forEach(cell => frag.appendChild(cell.elem));
 		this.elem.appendChild(frag);
 	}
+	init() {
+		this.data.forEach((value, i) => this[i].value = value);
+	}
 }
+
+class Title extends Row {
+	constructor() {
+		super(...arguments);
+		this.selected = new Set();
+	}
+	has(index) {
+		return this.selected.has(index);
+	}
+	add(index) {
+		this.selected.add(index);
+	}
+	delete(index) {
+		this.selected.delete(index);
+	}
+}
+
 
 const sController = {
 	pri: {
 		createRow(data = []) {
 			const cells = [];
-			data.forEach(data => cells.push(new Cell(data)));
+			data.forEach(data => cells.push(new Cell({value: data})));
 			return new Row(...cells);
 		},
 		init() {
@@ -183,7 +210,7 @@ const sMatrix = {
 				elem.className = className;
 				elem.style.display = "grid";
 				elem.style.gridGap = "10px";
-				elem.style.backgroundColor = "#aaa";
+				elem.style.backgroundColor = "#131313";
 				elem.style.padding = "13px";
 				elem.style.userSelect = "none";
 				elem.style.width = "400px";
@@ -203,24 +230,80 @@ const sMatrix = {
 					for(let i=0, length = this.columnCount-arr.length; i<length; i++) arr.push("");
 			});
 		},
-		createController() {
-			const cells = [
-				new Cell("reset", "#dd74c1"),
-				new Cell("x", "#dd74c1"),
-				new Cell("y", "#dd74c1"),
-				new Cell("x, y", "#dd74c1", undefined, e => console.log(10)),
-				new Cell("y", "#dd74c1"),
-			];
-			return new Row(...cells);
+		controller: {
+			events: {
+				init() {
+					this.init();
+				},
+				shuffle: {
+					x() {
+						this.xShuffle();
+					},
+					y() {
+						this.yShuffle();
+					},
+					xy() {
+						this.shuffle();
+					}
+				},
+				hide() {
+					if(this.title.selected.size) {
+						this.title.selected.forEach(index => {
+							this.forEach(row => {
+								row[Number(index) - 1].value = "　";
+							});
+						});
+					}
+				},
+				reset() {
+					if(this.title.selected.size) {
+						this.title.selected.forEach(index => {
+							this.forEach(row => {
+								row[Number(index) - 1].value = row[Number(index) - 1].initProp.value;
+							});
+						});
+					}
+				}
+			},
+			create() {
+				function props(value, color, handler, className) {
+					return {value, color, handler, className};
+				}
+				const e = sMatrix.pri.controller.events, color = "#dd74c1", cells = [
+					new Cell(props("init", color, e.init.bind(this))),
+					new Cell(props("x", color, e.shuffle.x.bind(this))),
+					new Cell(props("y", color, e.shuffle.y.bind(this))),
+					new Cell(props("x, y", color, e.shuffle.xy.bind(this))),
+
+					new Cell(props("hide", color, e.hide.bind(this), "hide")),
+					new Cell(props("reset", color, e.reset.bind(this), "reset"))
+				];
+				return new Row(...cells);
+			}
 		},
-		createTitle() {
-			const cells = [];
-			for(let i=1; i<=this.columnCount; i++) cells.push(new Cell(i, "#dd74c1"));
-			return new Row(...cells);
+		title: {
+			create() {
+				const cells = [], handler = e => {
+					const index = e.target.innerText,
+					color = e.target.cell.initProp.color, changeColor = "#ef37be";
+					if(this.title.has(index)) {
+						this.title.delete(index);
+						e.target.cell.color = color;
+					}
+					else {
+						this.title.add(index);
+						e.target.cell.color = changeColor;
+					}
+				};
+				for(let i=1; i<=this.columnCount; i++) cells.push(new Cell({
+					value: i, color: "#dd74c1", handler
+				}));
+				return new Title(...cells);
+			}
 		},
 		createRow(data = []) {
 			const cells = [];
-			data.forEach(data => cells.push(new Cell(data)));
+			data.forEach(data => cells.push(new Cell({value: data})));
 			return new Row(...cells);
 		},
 		createMatrix(data = []) {
@@ -230,8 +313,19 @@ const sMatrix = {
 		},
 		setup: {
 			controller() {
-				const controller = this.elem.getElementsByClassName("controller")[0];
-				controller.appendChild(this.controller.elem);
+				const 
+					controller = this.elem.getElementsByClassName("controller")[0],
+					elem = this.controller.elem,
+					hideButton = elem.getElementsByClassName("hide")[0],
+					resetButton = elem.getElementsByClassName("reset")[0];
+				elem.style.gridTemplateColumns = "repeat(4, 1fr)";
+				elem.style.gridTemplateRows = "repeat(2, 1fr)";
+				elem.style.gridGap = "10px";
+				hideButton.style.gridColumn = "1/3";
+				resetButton.style.gridColumn = "3/5";
+
+				controller.appendChild(elem);
+				
 			},
 			title() {
 				const title = this.elem.getElementsByClassName("title")[0];
@@ -244,8 +338,8 @@ const sMatrix = {
 			main(data) {
 				const parent = sMatrix.pri, here = parent.setup;
 
-				this.controller = parent.createController.call(this);
-				this.title = parent.createTitle.call(this);
+				this.controller = parent.controller.create.call(this);
+				this.title = parent.title.create.call(this);
 				this.push(...parent.createMatrix(data));
 				here.controller.call(this);
 				here.title.call(this);
@@ -281,6 +375,7 @@ const sMatrix = {
 class Matrix extends Array {
 	constructor(data = []) {
 		super();
+		this.data = data;
 		this.elem;
 		this.contentElem;
 		this.controller;
@@ -304,18 +399,19 @@ class Matrix extends Array {
 		this.xShuffle();
 		this.yShuffle();
 	}
+	init() {
+		this.forEach((row, i) => {
+			row.forEach((cell, j) => {
+				cell.value = this.data[i][j];
+			});
+		});
+	}
 	render(target) {
 		target.appendChild(this.elem);
 	}
 }
 
 const matrix = new Matrix(data);
-// const matrix = new Matrix([
-// 	[1, 2, 3, "", "", ""],
-// 	[1, 2, 3, 4],
-// 	[1, 2, 3, "", "", "", ""]
-// ]);
-console.log(matrix);
 matrix.render(app);
 // matrix.yShuffle();
 // matrix.xShuffle();
