@@ -57,8 +57,8 @@ data = [
 	[99, "백수", "白壽"],
 
 	[100, "기이지수", "期頥之壽"]
-]
-const sCell = {
+],
+sCell = {
 	pri: {
 		defProps(value, color) {
 			let 
@@ -108,10 +108,11 @@ const sCell = {
 			here.setEvnet.call(this, eHendler);
 		}
 	}
-}
+};
+
 class Cell {
 	constructor(props = {}) {
-		const {value, className, color = "#e5bcda", handler} = props;
+		const {value, className, color = "#D6E6F2", handler} = props;
 		this.elem = document.createElement("div");
 		this.elem.className = className;
 		this.elem.cell = this;
@@ -125,7 +126,7 @@ const sRow = {
 			this.elem.style.gridTemplateColumns = `repeat(${this.length}, 1fr)`;
 			this.elem.style.justifyItems = "stretch";
 			this.elem.style.textAlign = "center";
-			this.elem.style.backgroundColor = "#222222";
+			this.elem.style.backgroundColor = "#F7FBFC";
 			this.elem.style.gridColumnGap = "10px";
 			// this.elem.style.height = "100%";
 		},
@@ -202,7 +203,8 @@ const sMatrix = {
 			wrap() {
 				const elem = document.createElement("div");
 				elem.style.display = "grid";
-				elem.style.justifyContent = "center";
+				elem.style.color = "#5a5a5a";
+				elem.style.fontSize = "20px";
 				return elem;
 			},
 			block(className) {
@@ -210,10 +212,10 @@ const sMatrix = {
 				elem.className = className;
 				elem.style.display = "grid";
 				elem.style.gridGap = "10px";
-				elem.style.backgroundColor = "#131313";
+				elem.style.backgroundColor = "#F7FBFC";
 				elem.style.padding = "13px";
 				elem.style.userSelect = "none";
-				elem.style.width = "400px";
+				// elem.style.width = "400px";
 				return elem;
 			}
 		},
@@ -247,36 +249,46 @@ const sMatrix = {
 					}
 				},
 				hide() {
+					const hideCell = this.elem.getElementsByClassName("hide")[0].cell;
 					if(this.title.selected.size) {
-						this.title.selected.forEach(index => {
-							this.forEach(row => {
-								row[Number(index) - 1].value = "　";
+						if(hideCell.hide) {
+							hideCell.hide = false;
+							hideCell.value = "숨기기";
+							this.title.selected.forEach(index => {
+								this.forEach(row => {
+									row[Number(index) - 1].value = row[Number(index) - 1].initProp.value;
+								});
 							});
-						});
+						}
+						else {
+							hideCell.value = "보이기";
+							hideCell.hide = true;
+							this.title.selected.forEach(index => {
+								this.forEach(row => {
+									row[Number(index) - 1].value = "　";
+								});
+							});
+						}
 					}
 				},
-				reset() {
-					if(this.title.selected.size) {
-						this.title.selected.forEach(index => {
-							this.forEach(row => {
-								row[Number(index) - 1].value = row[Number(index) - 1].initProp.value;
-							});
-						});
-					}
+				madeBy() {
+					const madeByCell = this.elem.getElementsByClassName("madeBy")[0].cell;
+					madeByCell.value = madeByCell.value === "By.hgs250" 
+					? "Hakuna matata" : "By.hgs250";
 				}
 			},
 			create() {
 				function props(value, color, handler, className) {
 					return {value, color, handler, className};
 				}
-				const e = sMatrix.pri.controller.events, color = "#dd74c1", cells = [
-					new Cell(props("init", color, e.init.bind(this))),
-					new Cell(props("x", color, e.shuffle.x.bind(this))),
-					new Cell(props("y", color, e.shuffle.y.bind(this))),
-					new Cell(props("x, y", color, e.shuffle.xy.bind(this))),
+				const e = sMatrix.pri.controller.events, color = "#8fb8e5", cells = [
+					new Cell(props("처음으로", color, e.init.bind(this), "first")),
+					new Cell(props("가로", color, e.shuffle.x.bind(this))),
+					new Cell(props("세로", color, e.shuffle.y.bind(this))),
+					new Cell(props("모두", color, e.shuffle.xy.bind(this))),
 
-					new Cell(props("hide", color, e.hide.bind(this), "hide")),
-					new Cell(props("reset", color, e.reset.bind(this), "reset"))
+					new Cell(props("숨기기", color, e.hide.bind(this), "hide")),
+					new Cell(props("By.hgs250", color, e.madeBy.bind(this), "madeBy")),
 				];
 				return new Row(...cells);
 			}
@@ -285,7 +297,7 @@ const sMatrix = {
 			create() {
 				const cells = [], handler = e => {
 					const index = e.target.innerText,
-					color = e.target.cell.initProp.color, changeColor = "#ef37be";
+					color = e.target.cell.initProp.color, changeColor = "#9ab7c9";
 					if(this.title.has(index)) {
 						this.title.delete(index);
 						e.target.cell.color = color;
@@ -296,7 +308,7 @@ const sMatrix = {
 					}
 				};
 				for(let i=1; i<=this.columnCount; i++) cells.push(new Cell({
-					value: i, color: "#dd74c1", handler
+					value: i, color: "#B9D7EA", handler
 				}));
 				return new Title(...cells);
 			}
@@ -316,13 +328,22 @@ const sMatrix = {
 				const 
 					controller = this.elem.getElementsByClassName("controller")[0],
 					elem = this.controller.elem,
+					firstButton = elem.getElementsByClassName("first")[0],
 					hideButton = elem.getElementsByClassName("hide")[0],
-					resetButton = elem.getElementsByClassName("reset")[0];
-				elem.style.gridTemplateColumns = "repeat(4, 1fr)";
+					madeBy = elem.getElementsByClassName("madeBy")[0];
+				elem.style.gridTemplateColumns = "repeat(3, 1fr)";
 				elem.style.gridTemplateRows = "repeat(2, 1fr)";
 				elem.style.gridGap = "10px";
-				hideButton.style.gridColumn = "1/3";
-				resetButton.style.gridColumn = "3/5";
+				// grid-row: 2;
+				firstButton.style.gridRow = "2";
+				hideButton.style.gridColumn = "2/3";
+				hideButton.cell.hide = false;
+
+				madeBy.style.backgroundColor = "#f7fbfc";
+				madeBy.style.color = "#ddc7ff";
+				madeBy.style.fontStyle = "oblique";
+				madeBy.style.fontFamily = "fantasy";
+				madeBy.style.textShadow = "1px 1px 3px #323232";
 
 				controller.appendChild(elem);
 				
