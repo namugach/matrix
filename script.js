@@ -422,7 +422,9 @@ class Matrix extends Array {
 	}
 	init() {
 		this.forEach((row, i) => {
+			row.data = this.data[i];
 			row.forEach((cell, j) => {
+				cell.initProp.value = this.data[i][j];
 				cell.value = this.data[i][j];
 			});
 		});
